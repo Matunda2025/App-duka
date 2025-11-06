@@ -1,5 +1,7 @@
 import { supabase } from './supabaseClient';
 import { App, AppFormData, Review, Profile, UserReview } from '../types';
+import { GoogleGenAI } from '@google/genai';
+
 
 /*
   SETUP YOUR SUPABASE DATABASE WITH THE FOLLOWING SQL:
@@ -401,5 +403,69 @@ export const deleteUser = async (userId: string): Promise<void> => {
     if (error) {
         console.error("Error deleting user:", error);
         throw error;
+    }
+};
+
+// --- AI Features ---
+
+export const getAiAppRecommendation = async (query: string, apps: App[]): Promise<string> => {
+    if (!process.env.API_KEY) {
+        return "Samahani, ufunguo wa API haujasanidiwa. Tafadhali wasiliana na msimamizi.";
+    }
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+
+    const appInfoForAI = apps.map(app => ({
+        id: app.id,
+        name: app.name,
+        category: app.category,
+        short_description: app.short_description,
+        average_rating: app.average_rating.toFixed(1),
+        review_count: app.review_count,
+    }));
+
+    const systemInstruction = `Wewe ni "Msaidizi wa AI" wa duka la programu liitwalo App Duka. Lugha yako ni Kiswahili. Kazi yako ni kusaidia watumiaji kupata programu kulingana na maombi yao. Unaweza kupendekeza programu kutoka kwenye orodha iliyotolewa pekee. Jibu kwa upole na kwa njia ya mazungumzo. Usitaje programu ambazo hazipo kwenye orodha. Huu ndio orodha ya programu zilizopo katika muundo wa JSON: ${JSON.stringify(appInfoForAI)}`;
+
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: query,
+            config: {
+                systemInstruction: systemInstruction,
+                temperature: 0.5,
+            }
+        });
+
+        return response.text;
+    } catch (error) {
+        console.error("Error calling Gemini API:", error);
+        return "Samahani, nimepata hitilafu. Tafadhali jaribu tena baada ya muda mfupi.";
+    }
+};
+
+// Fix: Add missing getAiAppAnalysis function.
+export const getAiAppAnalysis = async (app: App): Promise<string> => {
+    if (!process.env.API_KEY) {
+        throw new Error("Samahani, ufunguo wa API haujasanidiwa. Tafadhali wasiliana na msimamizi.");
+    }
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+
+    const systemInstruction = "Wewe ni mkaguzi mtaalamu wa programu kwa duka la programu la Tanzania liitwalo 'App Duka'. Lugha yako ni Kiswahili. Unatoa uchambuzi mfupi, wa kitaalamu kwa msimamizi wa duka. Lengo lako ni kuonyesha uwezo, udhaifu, au masuala yoyote ya kisera (kama maudhui yasiyofaa, maelezo yasiyoeleweka, n.k.). Weka uchambuzi wako mfupi na rahisi kusoma.";
+    
+    const contents = `Tafadhali fanya uchambuzi wa programu ifuatayo, ukizingatia maelezo yake:\n\n**Jina:** ${app.name}\n**Kategoria:** ${app.category}\n**Maelezo Mafupi:** ${app.short_description}\n**Maelezo Kamili:** ${app.full_description}`;
+    
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: contents,
+            config: {
+                systemInstruction: systemInstruction,
+                temperature: 0.3,
+            }
+        });
+
+        return response.text;
+    } catch (error) {
+        console.error("Error calling Gemini API for app analysis:", error);
+        throw new Error("Imeshindwa kupata uchambuzi kutoka kwa AI. Tafadhali jaribu tena.");
     }
 };

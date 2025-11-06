@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom';
 import { 
     getAllApps, addApp, updateApp, deleteApp, uploadAppFile, 
     deleteAppFileByUrl, getAllProfiles, updateUserProfileRole, 
-    updateAppStatus, deleteUser, createProfileForCurrentUser
+    updateAppStatus, deleteUser, createProfileForCurrentUser,
+    getAiAppAnalysis
 } from '../services/api';
 import { App, AppFormData, Profile } from '../types';
 import { useAuth } from '../context/AuthContext';
@@ -25,6 +26,13 @@ const AdminDashboardPage: React.FC = () => {
   const [editingApp, setEditingApp] = useState<App | null>(null);
   const [editingUser, setEditingUser] = useState<Profile | null>(null);
   const [isCreatingProfile, setIsCreatingProfile] = useState(false);
+
+  // State for AI analysis
+  const [isAnalysisModalOpen, setIsAnalysisModalOpen] = useState(false);
+  const [analyzingApp, setAnalyzingApp] = useState<App | null>(null);
+  const [analysisResult, setAnalysisResult] = useState('');
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+
 
   const loadApps = async () => {
     try {
@@ -208,6 +216,21 @@ const AdminDashboardPage: React.FC = () => {
     }
   };
 
+  const handleAnalyzeApp = async (app: App) => {
+    setAnalyzingApp(app);
+    setIsAnalysisModalOpen(true);
+    setIsAnalyzing(true);
+    setAnalysisResult('');
+    try {
+        const result = await getAiAppAnalysis(app);
+        setAnalysisResult(result);
+    } catch (err: any) {
+        setAnalysisResult("Imeshindwa kupata uchambuzi wa AI. Tafadhali jaribu tena.");
+    } finally {
+        setIsAnalyzing(false);
+    }
+  };
+
   const getRoleDisplayName = (role: Profile['role']) => {
     switch (role) {
         case 'admin': return 'Msimamizi';
@@ -283,6 +306,7 @@ const AdminDashboardPage: React.FC = () => {
                     onEdit={handleOpenAppModal} 
                     onDelete={handleDeleteApp}
                     onStatusChange={handleStatusChange}
+                    onAnalyze={handleAnalyzeApp}
                 />
             )}
         </div>
@@ -356,6 +380,26 @@ const AdminDashboardPage: React.FC = () => {
           onClose={handleCloseUserModal}
           onSave={handleSaveUserRole}
         />
+      )}
+
+      {isAnalysisModalOpen && analyzingApp && (
+          <Modal
+              title={`Uchambuzi wa AI kwa "${analyzingApp.name}"`}
+              onClose={() => setIsAnalysisModalOpen(false)}
+          >
+              {isAnalyzing ? (
+                  <div className="flex justify-center items-center h-40">
+                      <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-primary"></div>
+                  </div>
+              ) : (
+                  <div className="space-y-4">
+                      <h3 className="text-lg font-semibold text-text-primary">Matokeo ya Uchambuzi:</h3>
+                      <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 whitespace-pre-wrap">
+                          <p className="text-text-secondary">{analysisResult}</p>
+                      </div>
+                  </div>
+              )}
+          </Modal>
       )}
     </div>
   );

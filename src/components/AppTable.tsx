@@ -7,6 +7,7 @@ interface AppTableProps {
   onEdit: (app: App) => void;
   onDelete: (appId: string) => void;
   onStatusChange: (appId: string, status: App['status']) => void;
+  onAnalyze: (app: App) => void;
 }
 
 const StatusBadge: React.FC<{ status: App['status'] }> = ({ status }) => {
@@ -29,9 +30,9 @@ const StatusBadge: React.FC<{ status: App['status'] }> = ({ status }) => {
 };
 
 
-export const AppTable: React.FC<AppTableProps> = ({ apps, profile, onEdit, onDelete, onStatusChange }) => {
+export const AppTable: React.FC<AppTableProps> = ({ apps, profile, onEdit, onDelete, onStatusChange, onAnalyze }) => {
   if (apps.length === 0) {
-    return <p className="text-center text-gray-500 py-4">Hakuna programu zilizoongezwa bado.</p>;
+    return <p className="text-center text-gray-500 py-4">Hakuna programu zilizoongezw_a bado.</p>;
   }
 
   return (
@@ -81,6 +82,15 @@ export const AppTable: React.FC<AppTableProps> = ({ apps, profile, onEdit, onDel
                 {new Date(app.created_at).toLocaleDateString('sw-TZ')}
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                {profile?.role === 'admin' && app.status === 'pending' && (
+                    <button
+                        onClick={() => onAnalyze(app)}
+                        className="text-secondary hover:text-teal-700 mr-4"
+                        title="Kagua na AI"
+                    >
+                       Kagua na AI
+                    </button>
+                )}
                 <button
                   onClick={() => onEdit(app)}
                   className="text-indigo-600 hover:text-indigo-900 mr-4"
