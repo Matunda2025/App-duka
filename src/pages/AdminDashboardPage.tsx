@@ -390,11 +390,12 @@ const AdminDashboardPage: React.FC = () => {
               {isAnalyzing ? (
                   <div className="flex justify-center items-center h-40">
                       <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-primary"></div>
+                      <p className="ml-4 text-text-secondary">Inachambua...</p>
                   </div>
               ) : (
                   <div className="space-y-4">
                       <h3 className="text-lg font-semibold text-text-primary">Matokeo ya Uchambuzi:</h3>
-                      <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 whitespace-pre-wrap">
+                      <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 whitespace-pre-wrap font-sans text-sm">
                           <p className="text-text-secondary">{analysisResult}</p>
                       </div>
                   </div>

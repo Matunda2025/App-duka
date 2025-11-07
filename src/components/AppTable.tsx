@@ -32,7 +32,7 @@ const StatusBadge: React.FC<{ status: App['status'] }> = ({ status }) => {
 
 export const AppTable: React.FC<AppTableProps> = ({ apps, profile, onEdit, onDelete, onStatusChange, onAnalyze }) => {
   if (apps.length === 0) {
-    return <p className="text-center text-gray-500 py-4">Hakuna programu zilizoongezw_a bado.</p>;
+    return <p className="text-center text-gray-500 py-4">Hakuna programu zilizoongezwa bado.</p>;
   }
 
   return (
@@ -85,7 +85,7 @@ export const AppTable: React.FC<AppTableProps> = ({ apps, profile, onEdit, onDel
                 {profile?.role === 'admin' && app.status === 'pending' && (
                     <button
                         onClick={() => onAnalyze(app)}
-                        className="text-secondary hover:text-teal-700 mr-4"
+                        className="text-secondary hover:text-teal-700 mr-4 font-semibold"
                         title="Kagua na AI"
                     >
                        Kagua na AI

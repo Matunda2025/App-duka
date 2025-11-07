@@ -321,6 +321,14 @@ export const signOutUser = () => {
     return supabase.auth.signOut();
 };
 
+export const sendPasswordResetEmail = (email: string) => {
+    // This uses the Site URL from Supabase Auth settings and a built-in email template
+    // which takes the user to a Supabase-hosted password reset page.
+    return supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: window.location.origin, // Redirect back to app after reset
+    });
+};
+
 export const getSession = async () => {
     const { data, error } = await supabase.auth.getSession();
     if (error) throw error;
@@ -406,66 +414,70 @@ export const deleteUser = async (userId: string): Promise<void> => {
     }
 };
 
-// --- AI Features ---
+// --- Gemini AI Functions ---
 
+// Initialize Gemini
+// Ensure process.env.API_KEY is available. For Vite, this is handled in vite.config.ts
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+
+/**
+ * Uses Gemini to get an app recommendation based on a user query.
+ * @param query The user's natural language query.
+ * @param apps The list of available apps to recommend from.
+ * @returns A string response from the AI.
+ */
 export const getAiAppRecommendation = async (query: string, apps: App[]): Promise<string> => {
-    if (!process.env.API_KEY) {
-        return "Samahani, ufunguo wa API haujasanidiwa. Tafadhali wasiliana na msimamizi.";
-    }
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const appInfo = apps.map(app => 
+        `ID: ${app.id}, Jina: ${app.name}, Kategoria: ${app.category}, Maelezo: ${app.short_description}`
+    ).join('\n');
 
-    const appInfoForAI = apps.map(app => ({
-        id: app.id,
-        name: app.name,
-        category: app.category,
-        short_description: app.short_description,
-        average_rating: app.average_rating.toFixed(1),
-        review_count: app.review_count,
-    }));
-
-    const systemInstruction = `Wewe ni "Msaidizi wa AI" wa duka la programu liitwalo App Duka. Lugha yako ni Kiswahili. Kazi yako ni kusaidia watumiaji kupata programu kulingana na maombi yao. Unaweza kupendekeza programu kutoka kwenye orodha iliyotolewa pekee. Jibu kwa upole na kwa njia ya mazungumzo. Usitaje programu ambazo hazipo kwenye orodha. Huu ndio orodha ya programu zilizopo katika muundo wa JSON: ${JSON.stringify(appInfoForAI)}`;
+    const prompt = `Wewe ni msaidizi mtaalam wa duka la programu la "App Duka". Lugha yako iwe Kiswahili.
+    Hii ni orodha ya programu zilizopo:\n${appInfo}\n\n
+    Mtumiaji anatafuta: "${query}"\n\n
+    Tafadhali, pendekeza programu moja au zaidi zinazolingana na ombi la mtumiaji. 
+    Toa maelezo mafupi na ya kirafiki kwa nini unapendekeza programu hizo.
+    Kama hakuna programu inayolingana, eleza kwa upole na upendekeze mtumiaji atafute kitu kingine.
+    Jibu lako liwe la moja kwa moja na fupi.`;
 
     try {
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash',
-            contents: query,
-            config: {
-                systemInstruction: systemInstruction,
-                temperature: 0.5,
-            }
+            contents: prompt,
         });
-
         return response.text;
     } catch (error) {
         console.error("Error calling Gemini API:", error);
-        return "Samahani, nimepata hitilafu. Tafadhali jaribu tena baada ya muda mfupi.";
+        throw new Error("Imeshindwa kupata pendekezo kutoka kwa AI.");
     }
 };
 
-// Fix: Add missing getAiAppAnalysis function.
+/**
+ * Provides a brief analysis of an app for admins to help with the approval process.
+ */
 export const getAiAppAnalysis = async (app: App): Promise<string> => {
-    if (!process.env.API_KEY) {
-        throw new Error("Samahani, ufunguo wa API haujasanidiwa. Tafadhali wasiliana na msimamizi.");
-    }
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const appDetails = `Jina la Programu: ${app.name}\nKategoria: ${app.category}\nMaelezo Mafupi: ${app.short_description}\nMaelezo Kamili: ${app.full_description}`;
+    
+    const prompt = `Wewe ni mchambuzi msaidizi wa usalama na ubora wa programu.
+    Umepewa jukumu la kukagua programu mpya iliyowasilishwa kwenye duka la programu.
+    
+    Maelezo ya Programu:
+    ${appDetails}
 
-    const systemInstruction = "Wewe ni mkaguzi mtaalamu wa programu kwa duka la programu la Tanzania liitwalo 'App Duka'. Lugha yako ni Kiswahili. Unatoa uchambuzi mfupi, wa kitaalamu kwa msimamizi wa duka. Lengo lako ni kuonyesha uwezo, udhaifu, au masuala yoyote ya kisera (kama maudhui yasiyofaa, maelezo yasiyoeleweka, n.k.). Weka uchambuzi wako mfupi na rahisi kusoma.";
+    Tafadhali toa uchambuzi mfupi katika lugha ya Kiswahili, ukizingatia yafuatayo:
+    1.  **Mapendekezo ya Jina na Maelezo:** Je, jina na maelezo ni mazuri na yanafaa? Toa mapendekezo ya kuboresha kama yapo.
+    2.  **Uwezekano wa Maudhui Hatari:** Kulingana na maelezo, je, kuna uwezekano wa programu kuwa na maudhui yasiyofaa, ulaghai (scam), au kukiuka sera? (k.m., ahadi za uongo, maudhui ya watu wazima).
+    3.  **Mapendekezo ya Mwisho:** Toa pendekezo fupi la mwisho: "Inaonekana salama kuidhinishwa," "Inahitaji ukaguzi wa kina," au "Inaashiria hatari, pendekeza kukataliwa."
     
-    const contents = `Tafadhali fanya uchambuzi wa programu ifuatayo, ukizingatia maelezo yake:\n\n**Jina:** ${app.name}\n**Kategoria:** ${app.category}\n**Maelezo Mafupi:** ${app.short_description}\n**Maelezo Kamili:** ${app.full_description}`;
-    
+    Jibu liwe fupi na lenye hoja wazi.`;
+
     try {
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash',
-            contents: contents,
-            config: {
-                systemInstruction: systemInstruction,
-                temperature: 0.3,
-            }
+            contents: prompt,
         });
-
         return response.text;
     } catch (error) {
-        console.error("Error calling Gemini API for app analysis:", error);
-        throw new Error("Imeshindwa kupata uchambuzi kutoka kwa AI. Tafadhali jaribu tena.");
+        console.error("Error calling Gemini API for analysis:", error);
+        throw new Error("Imeshindwa kupata uchambuzi kutoka kwa AI.");
     }
 };

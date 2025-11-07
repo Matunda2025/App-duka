@@ -1,10 +1,10 @@
-// Fix: Implemented the HomePage component.
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { getAllApps } from '../services/api';
 import { App } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { StarRating } from '../components/StarRating';
+import AiAssistantModal from '../components/AiAssistantModal';
 
 const AppCard: React.FC<{ app: App }> = ({ app }) => (
   <Link to={`/app/${app.id}`} className="block bg-surface rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300 overflow-hidden">
@@ -33,6 +33,7 @@ const HomePage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isAiModalOpen, setIsAiModalOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('zote');
   const [sortBy, setSortBy] = useState('mpya-zaidi');
   const menuRef = useRef<HTMLDivElement>(null);
@@ -92,106 +93,119 @@ const HomePage: React.FC = () => {
     });
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="bg-surface shadow-sm sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-primary">App Duka</h1>
-          <div className="relative" ref={menuRef}>
-            <button
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="text-text-secondary hover:text-primary hover:bg-slate-100 transition-colors p-2 rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary/50"
-              aria-label="Fungua menyu ya mtumiaji"
-              aria-haspopup="true"
-              aria-expanded={isMenuOpen}
-            >
-                <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M12 8C13.1 8 14 7.1 14 6C14 4.9 13.1 4 12 4C10.9 4 10 4.9 10 6C10 7.1 10.9 8 12 8ZM12 10C10.9 10 10 10.9 10 12C10 13.1 10.9 14 12 14C13.1 14 14 13.1 14 12C14 10.9 13.1 10 12 10ZM12 16C10.9 16 10 16.9 10 18C10 19.1 10.9 20 12 20C13.1 20 14 19.1 14 18C14 16.9 13.1 16 12 16Z" />
-                </svg>
-            </button>
-            
-            {isMenuOpen && (
-              <div className="absolute right-0 mt-2 w-48 bg-surface rounded-md shadow-xl py-1 z-20 border border-slate-200 ring-1 ring-black ring-opacity-5">
-                <Link
-                  to="/admin/dashboard"
-                  className="block w-full text-left px-4 py-2 text-sm text-text-primary hover:bg-slate-100 transition-colors"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  Jopo la Usimamizi
-                </Link>
-                <Link
-                  to="/my-account"
-                  className="block w-full text-left px-4 py-2 text-sm text-text-primary hover:bg-slate-100 transition-colors"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  Akaunti Yangu
-                </Link>
-                <div className="border-t border-slate-100 my-1"></div>
-                <button
-                  onClick={() => {
-                    logout();
-                    setIsMenuOpen(false);
-                  }}
-                  className="w-full text-left block px-4 py-2 text-sm text-red-600 hover:bg-slate-100 transition-colors"
-                >
-                  Ondoka
-                </button>
+    <>
+      <div className="min-h-screen bg-background">
+        <header className="bg-surface shadow-sm sticky top-0 z-10">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
+            <h1 className="text-2xl font-bold text-primary">App Duka</h1>
+            <div className="relative" ref={menuRef}>
+              <button
+                onClick={() => setIsMenuOpen(!isMenuOpen)}
+                className="text-text-secondary hover:text-primary hover:bg-slate-100 transition-colors p-2 rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary/50"
+                aria-label="Fungua menyu ya mtumiaji"
+                aria-haspopup="true"
+                aria-expanded={isMenuOpen}
+              >
+                  <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M12 8C13.1 8 14 7.1 14 6C14 4.9 13.1 4 12 4C10.9 4 10 4.9 10 6C10 7.1 10.9 8 12 8ZM12 10C10.9 10 10 10.9 10 12C10 13.1 10.9 14 12 14C13.1 14 14 13.1 14 12C14 10.9 13.1 10 12 10ZM12 16C10.9 16 10 16.9 10 18C10 19.1 10.9 20 12 20C13.1 20 14 19.1 14 18C14 16.9 13.1 16 12 16Z" />
+                  </svg>
+              </button>
+              
+              {isMenuOpen && (
+                <div className="absolute right-0 mt-2 w-48 bg-surface rounded-md shadow-xl py-1 z-20 border border-slate-200 ring-1 ring-black ring-opacity-5">
+                  <Link
+                    to="/admin/dashboard"
+                    className="block w-full text-left px-4 py-2 text-sm text-text-primary hover:bg-slate-100 transition-colors"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    Jopo la Usimamizi
+                  </Link>
+                  <Link
+                    to="/my-account"
+                    className="block w-full text-left px-4 py-2 text-sm text-text-primary hover:bg-slate-100 transition-colors"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    Akaunti Yangu
+                  </Link>
+                  <div className="border-t border-slate-100 my-1"></div>
+                  <button
+                    onClick={() => {
+                      logout();
+                      setIsMenuOpen(false);
+                    }}
+                    className="w-full text-left block px-4 py-2 text-sm text-red-600 hover:bg-slate-100 transition-colors"
+                  >
+                    Ondoka
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </header>
+        
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="mb-8 space-y-4 md:space-y-0 md:flex md:items-center md:justify-center md:space-x-4 md:flex-wrap md:gap-y-4">
+              <div className="flex-grow md:flex-grow-0 md:w-full lg:w-1/2">
+                  <input
+                      type="text"
+                      placeholder="Tafuta programu..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="w-full px-4 py-3 rounded-full bg-surface text-text-primary border border-slate-300 focus:outline-none focus:ring-2 focus:ring-primary shadow-sm"
+                  />
               </div>
-            )}
-          </div>
-        </div>
-      </header>
-      
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-8 space-y-4 md:space-y-0 md:flex md:items-center md:justify-center md:space-x-4 md:flex-wrap md:gap-y-4">
-            <div className="flex-grow md:flex-grow-0 md:w-full lg:w-1/2">
-                <input
-                    type="text"
-                    placeholder="Tafuta programu..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full px-4 py-3 rounded-full bg-surface text-text-primary border border-slate-300 focus:outline-none focus:ring-2 focus:ring-primary shadow-sm"
-                />
-            </div>
-            <div className="flex items-center space-x-4 w-full md:w-auto flex-grow md:flex-grow-0">
-                <select
-                    value={selectedCategory}
-                    onChange={(e) => setSelectedCategory(e.target.value)}
-                    className="flex-1 px-4 py-3 rounded-full bg-surface text-text-primary border border-slate-300 focus:outline-none focus:ring-2 focus:ring-primary shadow-sm"
-                    aria-label="Chuja kwa kategoria"
-                >
-                    {categories.map(cat => (
-                        <option key={cat} value={cat} className="capitalize">{cat === 'zote' ? 'Kategoria Zote' : cat}</option>
-                    ))}
-                </select>
+              <div className="flex items-center space-x-4 w-full md:w-auto flex-grow md:flex-grow-0">
+                  <select
+                      value={selectedCategory}
+                      onChange={(e) => setSelectedCategory(e.target.value)}
+                      className="flex-1 px-4 py-3 rounded-full bg-surface text-text-primary border border-slate-300 focus:outline-none focus:ring-2 focus:ring-primary shadow-sm"
+                      aria-label="Chuja kwa kategoria"
+                  >
+                      {categories.map(cat => (
+                          <option key={cat} value={cat} className="capitalize">{cat === 'zote' ? 'Kategoria Zote' : cat}</option>
+                      ))}
+                  </select>
 
-                <select
-                    value={sortBy}
-                    onChange={(e) => setSortBy(e.target.value)}
-                    className="flex-1 px-4 py-3 rounded-full bg-surface text-text-primary border border-slate-300 focus:outline-none focus:ring-2 focus:ring-primary shadow-sm"
-                    aria-label="Panga kwa"
-                >
-                    <option value="mpya-zaidi">Mpya Zaidi</option>
-                    <option value="ukadiriaji">Ukadiriaji wa Juu</option>
-                    <option value="maoni">Maoni Mengi</option>
-                </select>
-            </div>
-        </div>
-
-        {loading ? (
-          <div className="text-center text-text-secondary">Inapakia programu...</div>
-        ) : error ? (
-            <p className="text-center text-red-500">{error}</p>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {processedApps.length > 0 ? (
-              processedApps.map(app => <AppCard key={app.id} app={app} />)
-            ) : (
-              <p className="text-center text-text-secondary md:col-span-2 lg:col-span-3">Hakuna programu iliyopatikana.</p>
-            )}
+                  <select
+                      value={sortBy}
+                      onChange={(e) => setSortBy(e.target.value)}
+                      className="flex-1 px-4 py-3 rounded-full bg-surface text-text-primary border border-slate-300 focus:outline-none focus:ring-2 focus:ring-primary shadow-sm"
+                      aria-label="Panga kwa"
+                  >
+                      <option value="mpya-zaidi">Mpya Zaidi</option>
+                      <option value="ukadiriaji">Ukadiriaji wa Juu</option>
+                      <option value="maoni">Maoni Mengi</option>
+                  </select>
+              </div>
           </div>
-        )}
-      </main>
-    </div>
+
+          {loading ? (
+            <div className="text-center text-text-secondary">Inapakia programu...</div>
+          ) : error ? (
+              <p className="text-center text-red-500">{error}</p>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {processedApps.length > 0 ? (
+                processedApps.map(app => <AppCard key={app.id} app={app} />)
+              ) : (
+                <p className="text-center text-text-secondary md:col-span-2 lg:col-span-3">Hakuna programu iliyopatikana.</p>
+              )}
+            </div>
+          )}
+        </main>
+      </div>
+
+      <button
+        onClick={() => setIsAiModalOpen(true)}
+        className="fixed bottom-6 right-6 bg-primary text-white w-16 h-16 rounded-full shadow-lg hover:bg-blue-700 transition-colors flex items-center justify-center z-20"
+        aria-label="Fungua Msaidizi wa AI"
+      >
+        {/* Sparkle Icon */}
+        <svg className="w-8 h-8" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456Z" /></svg>
+      </button>
+
+      {isAiModalOpen && <AiAssistantModal apps={apps} onClose={() => setIsAiModalOpen(false)} />}
+    </>
   );
 };
 
