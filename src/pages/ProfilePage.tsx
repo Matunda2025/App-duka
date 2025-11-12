@@ -53,28 +53,23 @@ const ProfilePage: React.FC = () => {
         e.preventDefault();
         if (!user || !profile || username === profile.username) return;
 
-        if (window.confirm("Una uhakika unataka kuhifadhi mabadiliko haya?")) {
-            setLoading(true);
-            setError('');
-            setSuccess('');
-            try {
-                await updateUserProfile(user.id, { username });
-                setSuccess('Wasifu umesasishwa kikamilifu!');
-                // Manually update profile in context for immediate feedback
-                // Note: A more robust solution might involve a dedicated context update function
-                if (profile) profile.username = username;
-                setTimeout(() => setSuccess(''), 3000);
-            } catch (err: any) {
-                setError(err.message || 'Imeshindwa kusasisha wasifu.');
-            } finally {
-                setLoading(false);
-            }
+        setLoading(true);
+        setError('');
+        setSuccess('');
+        try {
+            await updateUserProfile(user.id, { username });
+            setSuccess('Wasifu umesasishwa kikamilifu!');
+            setTimeout(() => setSuccess(''), 3000);
+        } catch (err: any) {
+            setError(err.message || 'Imeshindwa kusasisha wasifu.');
+        } finally {
+            setLoading(false);
         }
     };
     
     const handleLogout = async () => {
         await logout();
-        navigate('/auth');
+        navigate('/');
     };
     
     const getRoleDisplayName = (role: 'user' | 'admin' | 'developer' | undefined) => {
@@ -109,7 +104,7 @@ const ProfilePage: React.FC = () => {
                                 <h2 className="text-xl font-bold text-text-primary truncate max-w-full">{profile?.username || user?.email}</h2>
                                 <p className="text-sm text-text-secondary capitalize font-semibold">{getRoleDisplayName(profile?.role)}</p>
                             </div>
-                            
+
                             {(profile?.role === 'admin' || profile?.role === 'developer') && (
                                 <div className="mb-6 border-b border-slate-200 pb-6">
                                     <Link to="/admin/dashboard" className="block w-full text-center bg-secondary hover:bg-teal-600 text-white font-bold py-2.5 px-4 rounded-lg transition-colors">
@@ -117,7 +112,7 @@ const ProfilePage: React.FC = () => {
                                     </Link>
                                 </div>
                             )}
-
+                            
                             <form onSubmit={handleProfileUpdate} className="space-y-4">
                                 <div>
                                     <label className="block text-sm font-medium text-text-secondary">Barua Pepe</label>

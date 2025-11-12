@@ -7,7 +7,7 @@ import { StarRating } from '../components/StarRating';
 
 const AppDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const { user } = useAuth();
+  const { user, openAuthModal } = useAuth();
   const [app, setApp] = useState<App | null>(null);
   const [loading, setLoading] = useState(true);
   const [reviews, setReviews] = useState<Review[]>([]);
@@ -52,9 +52,7 @@ const AppDetailPage: React.FC = () => {
             setLoadingReviews(false);
         }
     };
-    if (id) {
-        fetchReviews();
-    }
+    fetchReviews();
   }, [id]);
 
   const handleReviewSubmit = async (e: React.FormEvent) => {
@@ -188,7 +186,7 @@ const AppDetailPage: React.FC = () => {
               ) : (
                 <div className="bg-slate-50 p-6 rounded-lg mb-8 border border-slate-200 text-center">
                     <p className="text-text-secondary">
-                        <Link to="/auth" className="text-primary font-semibold hover:underline">Ingia</Link> ili uache maoni yako.
+                        Tafadhali <button onClick={openAuthModal} className="font-semibold text-primary hover:underline">ingia</button> ili uache maoni yako.
                     </p>
                 </div>
               )}

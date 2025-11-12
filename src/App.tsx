@@ -3,11 +3,11 @@ import { HashRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import HomePage from './pages/HomePage';
 import AppDetailPage from './pages/AppDetailPage';
-import AuthPage from './pages/AuthPage';
 import AdminDashboardPage from './pages/AdminDashboardPage';
 import ProfilePage from './pages/ProfilePage';
 import { isSupabaseConfigured } from './services/supabaseClient';
 import { DatabaseSetupError } from './components/DatabaseSetupError';
+import { AuthModal } from './pages/AuthPage';
 
 const SupabaseNotConfigured: React.FC = () => (
     <div className="min-h-screen flex items-center justify-center bg-red-50 p-4">
@@ -29,13 +29,13 @@ const SupabaseNotConfigured: React.FC = () => (
 
 const UserRoutes: React.FC = () => {
   const { user } = useAuth();
-  return user ? <Outlet /> : <Navigate to="/auth" replace />;
+  return user ? <Outlet /> : <Navigate to="/" replace />;
 };
 
 const AdminRoutes: React.FC = () => {
   const { user, profile } = useAuth();
   if (!user) {
-    return <Navigate to="/auth" replace />;
+    return <Navigate to="/" replace />;
   }
   
   if (profile?.role !== 'admin' && profile?.role !== 'developer') {
@@ -46,7 +46,7 @@ const AdminRoutes: React.FC = () => {
 };
 
 const AppRoutes: React.FC = () => {
-    const { loading, dbSetupError } = useAuth();
+    const { loading, dbSetupError, isAuthModalOpen, closeAuthModal } = useAuth();
 
     if (loading) {
         return <div className="min-h-screen flex items-center justify-center">Inasubiri...</div>;
@@ -57,27 +57,29 @@ const AppRoutes: React.FC = () => {
     }
 
     return (
-        <HashRouter>
-            <Routes>
-                {/* Public Routes - Accessible to everyone */}
-                <Route path="/" element={<HomePage />} />
-                <Route path="/app/:id" element={<AppDetailPage />} />
-                <Route path="/auth" element={<AuthPage />} />
-                
-                {/* Protected User Routes - Require login */}
-                <Route element={<UserRoutes />}>
-                    <Route path="/my-account" element={<ProfilePage />} />
-                </Route>
+        <>
+            <HashRouter>
+                <Routes>
+                    {/* Public Routes - Accessible to everyone */}
+                    <Route path="/" element={<HomePage />} />
+                    <Route path="/app/:id" element={<AppDetailPage />} />
+                    
+                    {/* Protected User Routes - Require login */}
+                    <Route element={<UserRoutes />}>
+                        <Route path="/my-account" element={<ProfilePage />} />
+                    </Route>
 
-                {/* Protected Admin/Developer Routes - Require specific roles */}
-                <Route element={<AdminRoutes />}>
-                    <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
-                </Route>
-                
-                {/* Fallback Route - Redirects any unknown paths to the homepage */}
-                <Route path="*" element={<Navigate to="/" />} />
-            </Routes>
-        </HashRouter>
+                    {/* Protected Admin/Developer Routes - Require specific roles */}
+                    <Route element={<AdminRoutes />}>
+                        <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
+                    </Route>
+                    
+                    {/* Fallback Route - Redirects any unknown paths to the homepage */}
+                    <Route path="*" element={<Navigate to="/" />} />
+                </Routes>
+            </HashRouter>
+            {isAuthModalOpen && <AuthModal onClose={closeAuthModal} />}
+        </>
     );
 };
 
