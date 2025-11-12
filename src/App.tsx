@@ -38,7 +38,6 @@ const AdminRoutes: React.FC = () => {
     return <Navigate to="/auth" replace />;
   }
   
-  // Allow admins and developers to access the dashboard
   if (profile?.role !== 'admin' && profile?.role !== 'developer') {
     return <Navigate to="/" replace />;
   }
@@ -60,18 +59,22 @@ const AppRoutes: React.FC = () => {
     return (
         <HashRouter>
             <Routes>
+                {/* Public Routes - Accessible to everyone */}
+                <Route path="/" element={<HomePage />} />
+                <Route path="/app/:id" element={<AppDetailPage />} />
                 <Route path="/auth" element={<AuthPage />} />
                 
+                {/* Protected User Routes - Require login */}
                 <Route element={<UserRoutes />}>
-                    <Route path="/" element={<HomePage />} />
-                    <Route path="/app/:id" element={<AppDetailPage />} />
                     <Route path="/my-account" element={<ProfilePage />} />
                 </Route>
 
+                {/* Protected Admin/Developer Routes - Require specific roles */}
                 <Route element={<AdminRoutes />}>
                     <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
                 </Route>
                 
+                {/* Fallback Route - Redirects any unknown paths to the homepage */}
                 <Route path="*" element={<Navigate to="/" />} />
             </Routes>
         </HashRouter>

@@ -52,7 +52,9 @@ const AppDetailPage: React.FC = () => {
             setLoadingReviews(false);
         }
     };
-    fetchReviews();
+    if (id) {
+        fetchReviews();
+    }
   }, [id]);
 
   const handleReviewSubmit = async (e: React.FormEvent) => {
@@ -152,36 +154,44 @@ const AppDetailPage: React.FC = () => {
             <section>
               <h2 className="text-2xl font-semibold mb-4 text-text-primary">Ukadiriaji na Maoni</h2>
               
-              <div className="bg-slate-50 p-6 rounded-lg mb-8 border border-slate-200">
-                <h3 className="text-lg font-bold text-text-primary mb-4">Acha maoni yako</h3>
-                <form onSubmit={handleReviewSubmit}>
-                  <div className="mb-4">
-                    <label className="block text-sm font-medium text-text-secondary mb-2">Ukadiriaji wako</label>
-                    <StarRating rating={newRating} setRating={setNewRating} />
-                  </div>
-                  <div className="mb-4">
-                    <label htmlFor="comment" className="block text-sm font-medium text-text-secondary mb-2">Maoni yako</label>
-                    <textarea
-                      id="comment"
-                      rows={4}
-                      className="w-full p-3 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                      placeholder="Andika maoni yako hapa..."
-                      value={newComment}
-                      onChange={(e) => setNewComment(e.target.value)}
+              {user ? (
+                <div className="bg-slate-50 p-6 rounded-lg mb-8 border border-slate-200">
+                  <h3 className="text-lg font-bold text-text-primary mb-4">Acha maoni yako</h3>
+                  <form onSubmit={handleReviewSubmit}>
+                    <div className="mb-4">
+                      <label className="block text-sm font-medium text-text-secondary mb-2">Ukadiriaji wako</label>
+                      <StarRating rating={newRating} setRating={setNewRating} />
+                    </div>
+                    <div className="mb-4">
+                      <label htmlFor="comment" className="block text-sm font-medium text-text-secondary mb-2">Maoni yako</label>
+                      <textarea
+                        id="comment"
+                        rows={4}
+                        className="w-full p-3 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                        placeholder="Andika maoni yako hapa..."
+                        value={newComment}
+                        onChange={(e) => setNewComment(e.target.value)}
+                        disabled={isSubmitting}
+                        required
+                      />
+                    </div>
+                    {reviewError && <p className="text-red-500 text-sm mb-4">{reviewError}</p>}
+                    <button
+                      type="submit"
                       disabled={isSubmitting}
-                      required
-                    />
-                  </div>
-                  {reviewError && <p className="text-red-500 text-sm mb-4">{reviewError}</p>}
-                  <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="bg-primary hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg transition-colors duration-300 disabled:bg-blue-300"
-                  >
-                    {isSubmitting ? 'Inatuma...' : 'Wasilisha Maoni'}
-                  </button>
-                </form>
-              </div>
+                      className="bg-primary hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg transition-colors duration-300 disabled:bg-blue-300"
+                    >
+                      {isSubmitting ? 'Inatuma...' : 'Wasilisha Maoni'}
+                    </button>
+                  </form>
+                </div>
+              ) : (
+                <div className="bg-slate-50 p-6 rounded-lg mb-8 border border-slate-200 text-center">
+                    <p className="text-text-secondary">
+                        <Link to="/auth" className="text-primary font-semibold hover:underline">Ingia</Link> ili uache maoni yako.
+                    </p>
+                </div>
+              )}
               
               <div>
                 {loadingReviews ? (

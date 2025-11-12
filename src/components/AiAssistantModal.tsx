@@ -66,7 +66,6 @@ const AiAssistantModal: React.FC<AiAssistantModalProps> = ({ apps, onClose }) =>
         <header className="p-4 border-b border-slate-200 flex justify-between items-center flex-shrink-0">
           <div className="flex items-center space-x-3">
             <span className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-              {/* Sparkle Icon */}
               <svg className="w-6 h-6 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456Z" /></svg>
             </span>
             <h2 id="ai-assistant-title" className="text-xl font-bold text-text-primary">Msaidizi wa AI</h2>
@@ -108,7 +107,6 @@ const AiAssistantModal: React.FC<AiAssistantModalProps> = ({ apps, onClose }) =>
               aria-label="Ujumbe kwa Msaidizi wa AI"
             />
             <button type="submit" disabled={isLoading || !input.trim()} className="bg-primary text-white rounded-full p-3 hover:bg-blue-700 transition-colors disabled:bg-blue-300 disabled:cursor-not-allowed flex-shrink-0" aria-label="Tuma Ujumbe">
-              {/* Send Icon */}
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5"><path d="M3.105 2.289a.75.75 0 0 0-.826.95l1.414 4.949a.75.75 0 0 0 .95.826L11.25 8.25l-5.607 1.77a.75.75 0 0 0-.826.95l1.414 4.949a.75.75 0 0 0 .95.826l3.296-1.048a.75.75 0 0 0 .421-.352l7.234-10.128a.75.75 0 0 0-.14-1.042L3.105 2.289Z" /></svg>
             </button>
           </form>

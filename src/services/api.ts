@@ -1,7 +1,6 @@
 import { supabase } from './supabaseClient';
 import { App, AppFormData, Review, Profile, UserReview } from '../types';
-import { GoogleGenAI } from '@google/genai';
-
+import { GoogleGenAI } from "@google/genai";
 
 /*
   SETUP YOUR SUPABASE DATABASE WITH THE FOLLOWING SQL:
@@ -62,7 +61,11 @@ import { GoogleGenAI } from '@google/genai';
     PRIMARY KEY (id)
   );
   ALTER TABLE public.apps ENABLE ROW LEVEL SECURITY;
-  CREATE POLICY "Public users can view approved apps, admins/devs can view all" ON public.apps FOR SELECT USING ( (status = 'approved') OR ((SELECT role FROM public.profiles WHERE id = auth.uid()) IN ('admin', 'developer')) );
+  -- *** CORRECTED RLS POLICIES FOR PUBLIC VIEWING ***
+  -- DROP OLD POLICIES on public.apps IF THEY EXIST
+  -- These two policies work together. Supabase combines multiple SELECT policies with OR.
+  CREATE POLICY "Public users can view approved apps" ON public.apps FOR SELECT USING (status = 'approved');
+  CREATE POLICY "Allow admins/devs to view any app" ON public.apps FOR SELECT USING ((auth.uid() IS NOT NULL) AND ((SELECT role FROM public.profiles WHERE id = auth.uid()) IN ('admin', 'developer')));
   CREATE POLICY "Allow admins/devs to manage apps" ON public.apps FOR ALL USING ( (SELECT role FROM public.profiles WHERE id = auth.uid()) IN ('admin', 'developer') );
 
 
@@ -126,47 +129,28 @@ import { GoogleGenAI } from '@google/genai';
 
 */
 
+// Initialize the Google AI client
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+
 // --- File Management (Storage) ---
 const APP_FILES_BUCKET = 'app_files';
 
-/**
- * Uploads a file to the Supabase storage bucket for app files.
- * @param file The file to upload.
- * @param appName The name of the app, used for creating a clean file path.
- * @returns The public URL of the uploaded file.
- */
 export const uploadAppFile = async (file: File, appName: string): Promise<string> => {
-    // Sanitize appName to create a safe folder name
     const safeAppName = appName.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
-    // Create a unique file name to avoid collisions
     const fileName = `${Date.now()}_${file.name}`;
     const filePath = `${safeAppName}/${fileName}`;
 
-    const { error: uploadError } = await supabase.storage
-        .from(APP_FILES_BUCKET)
-        .upload(filePath, file);
+    const { error: uploadError } = await supabase.storage.from(APP_FILES_BUCKET).upload(filePath, file);
+    if (uploadError) throw uploadError;
 
-    if (uploadError) {
-        console.error('Error uploading file:', uploadError);
-        throw uploadError;
-    }
-
-    const { data } = supabase.storage
-        .from(APP_FILES_BUCKET)
-        .getPublicUrl(filePath);
-
+    const { data } = supabase.storage.from(APP_FILES_BUCKET).getPublicUrl(filePath);
     return data.publicUrl;
 };
 
-/**
- * Deletes a file from the Supabase storage bucket by its public URL.
- * @param publicUrl The public URL of the file to delete.
- */
 export const deleteAppFileByUrl = async (publicUrl: string): Promise<void> => {
     if (!publicUrl) return;
     try {
         const url = new URL(publicUrl);
-        // The path is everything after the bucket name in the URL's pathname
         const pathSegments = url.pathname.split('/');
         const bucketNameIndex = pathSegments.findIndex(segment => segment === APP_FILES_BUCKET);
         if (bucketNameIndex === -1 || bucketNameIndex + 1 >= pathSegments.length) {
@@ -174,14 +158,9 @@ export const deleteAppFileByUrl = async (publicUrl: string): Promise<void> => {
         }
         const filePath = pathSegments.slice(bucketNameIndex + 1).join('/');
 
-        const { error } = await supabase.storage
-            .from(APP_FILES_BUCKET)
-            .remove([filePath]);
-        
+        const { error } = await supabase.storage.from(APP_FILES_BUCKET).remove([filePath]);
         if (error && error.message !== 'The resource was not found') {
             console.error('Error deleting file:', error.message);
-            // We don't throw here, as failing to delete an old file shouldn't block an update.
-            // A more robust system might log this for manual cleanup.
         }
     } catch (e) {
         console.error("Could not parse URL to delete file:", e);
@@ -189,69 +168,38 @@ export const deleteAppFileByUrl = async (publicUrl: string): Promise<void> => {
 };
 
 // --- App Management ---
-
 export const getAllApps = async (): Promise<App[]> => {
-  // Use the RPC call to the database function for better performance
   const { data, error } = await supabase.rpc('get_apps_with_ratings');
-
-  if (error) {
-    console.error('Error fetching apps with ratings:', error);
-    throw error;
-  }
+  if (error) throw error;
   return data || [];
 };
 
 export const getAppById = async (id: string): Promise<App | null> => {
-  const { data, error } = await supabase
-    .rpc('get_app_by_id_with_ratings', { p_app_id: id })
-    .single();
-
+  const { data, error } = await supabase.rpc('get_app_by_id_with_ratings', { p_app_id: id }).single();
   if (error) {
-    console.error('Error fetching app by id with ratings:', error);
-    // "JSON object requested, multiple (or no) rows returned" usually means not found for .single()
-    if (error.code === 'PGRST116') {
-        return null;
-    }
-    throw new Error(error.message);
+    if (error.code === 'PGRST116') return null;
+    throw error;
   }
-
   return data;
 };
 
-// Admin-only functions
 export const addApp = async (appData: AppFormData): Promise<App> => {
-    const { data, error } = await supabase
-        .from('apps')
-        .insert([appData])
-        .select()
-        .single();
+    const { data, error } = await supabase.from('apps').insert([appData]).select().single();
     if (error) throw error;
     return { ...data, average_rating: 0, review_count: 0 };
 };
 
 export const updateApp = async (appId: string, appData: Partial<AppFormData>): Promise<App> => {
-    const { data, error } = await supabase
-        .from('apps')
-        .update(appData)
-        .eq('id', appId)
-        .select()
-        .single();
+    const { data, error } = await supabase.from('apps').update(appData).eq('id', appId).select().single();
     if (error) throw error;
-    // Note: this doesn't refetch the rating. The UI should refetch the full app details if needed.
     return { ...data, average_rating: 0, review_count: 0 };
 };
 
 export const updateAppStatus = async (appId: string, status: App['status']): Promise<App> => {
-    const { data, error } = await supabase
-        .from('apps')
-        .update({ status })
-        .eq('id', appId)
-        .select()
-        .single();
+    const { data, error } = await supabase.from('apps').update({ status }).eq('id', appId).select().single();
     if (error) throw error;
     return data;
 };
-
 
 export const deleteApp = async (appId: string): Promise<void> => {
     const { error } = await supabase.from('apps').delete().eq('id', appId);
@@ -259,75 +207,30 @@ export const deleteApp = async (appId: string): Promise<void> => {
 };
 
 // --- Review Management ---
-
 export const getReviewsByAppId = async (appId: string): Promise<Review[]> => {
-    const { data, error } = await supabase
-        .from('reviews')
-        .select(`
-            *,
-            profile:profiles (email)
-        `)
-        .eq('app_id', appId)
-        .order('created_at', { ascending: false });
-
+    const { data, error } = await supabase.from('reviews').select(`*, profile:profiles (email)`).eq('app_id', appId).order('created_at', { ascending: false });
     if (error) throw error;
-    
-    // Flatten the result for our `Review` type
-    return data.map((r: any) => ({
-        ...r,
-        user_email: r.profile?.email || 'Mtumiaji asiyejulikana'
-    }));
+    return data.map((r: any) => ({ ...r, user_email: r.profile?.email || 'Mtumiaji asiyejulikana' }));
 };
 
 export const getReviewsByUserId = async (userId: string): Promise<UserReview[]> => {
-    const { data, error } = await supabase
-        .from('reviews')
-        .select(`
-            *,
-            app:apps (id, name, icon_url)
-        `)
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false });
-
+    const { data, error } = await supabase.from('reviews').select(`*, app:apps (id, name, icon_url)`).eq('user_id', userId).order('created_at', { ascending: false });
     if (error) throw error;
-
-    // Filter out reviews where the associated app might have been deleted
     return data.filter((r: any): r is UserReview => r.app !== null);
 };
 
-
 type NewReview = Omit<Review, 'id' | 'created_at' | 'user_email'>
 export const addReview = async (reviewData: NewReview): Promise<Review> => {
-    const { data, error } = await supabase
-        .from('reviews')
-        .insert([reviewData])
-        .select()
-        .single();
-
+    const { data, error } = await supabase.from('reviews').insert([reviewData]).select().single();
     if (error) throw error;
     return data;
 };
 
 // --- Auth & Profile Management ---
-export const signUpUser = (email: string, password: string) => {
-    return supabase.auth.signUp({ email, password });
-};
-
-export const signInUser = (email: string, password: string) => {
-    return supabase.auth.signInWithPassword({ email, password });
-};
-
-export const signOutUser = () => {
-    return supabase.auth.signOut();
-};
-
-export const sendPasswordResetEmail = (email: string) => {
-    // This uses the Site URL from Supabase Auth settings and a built-in email template
-    // which takes the user to a Supabase-hosted password reset page.
-    return supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: window.location.origin, // Redirect back to app after reset
-    });
-};
+export const signUpUser = (email: string, password: string) => supabase.auth.signUp({ email, password });
+export const signInUser = (email: string, password: string) => supabase.auth.signInWithPassword({ email, password });
+export const signOutUser = () => supabase.auth.signOut();
+export const sendPasswordResetEmail = (email: string) => supabase.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin });
 
 export const getSession = async () => {
     const { data, error } = await supabase.auth.getSession();
@@ -336,148 +239,81 @@ export const getSession = async () => {
 }
 
 export const getUserProfile = async (userId: string): Promise<Profile | null> => {
-    const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single();
-
+    const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).single();
     if (error) {
-        if (error.code === 'PGRST116') {
-            console.warn(`Profile not found for user ${userId}. This can happen for new users before their profile is created.`);
-            return null;
-        }
-        console.error("Error fetching profile:", error.message);
+        if (error.code === 'PGRST116') return null;
         throw error;
     }
     return data;
 };
 
-/**
- * Creates a profile for the current user. Used for recovery if the
- * on_auth_user_created trigger failed or didn't exist at signup.
- * Sets the role to admin as a convenience for the first-time setup.
- */
 export const createProfileForCurrentUser = async (userId: string, email: string): Promise<Profile> => {
-    const { data, error } = await supabase
-        .from('profiles')
-        .insert({ id: userId, email: email, role: 'admin' })
-        .select()
-        .single();
-
-    if (error) {
-        console.error('Error creating profile:', error);
-        throw error;
-    }
+    const { data, error } = await supabase.from('profiles').insert({ id: userId, email: email, role: 'admin' }).select().single();
+    if (error) throw error;
     return data;
 };
 
 export const updateUserProfile = async (userId: string, updates: { username?: string }): Promise<Profile> => {
-    const { data, error } = await supabase
-        .from('profiles')
-        .update(updates)
-        .eq('id', userId)
-        .select()
-        .single();
+    const { data, error } = await supabase.from('profiles').update(updates).eq('id', userId).select().single();
     if (error) throw error;
     return data;
 };
 
-// Admin-only function to get all user profiles
 export const getAllProfiles = async (): Promise<Profile[]> => {
-    const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .order('email');
+    const { data, error } = await supabase.from('profiles').select('*').order('email');
     if (error) throw error;
     return data;
 };
 
-// Admin-only function to update a user's role
-export const updateUserProfileRole = async (userId: string, role: 'user' | 'admin' | 'developer'): Promise<Profile> => {
-    const { data, error } = await supabase
-        .from('profiles')
-        .update({ role })
-        .eq('id', userId)
-        .select()
-        .single();
+export const updateUserProfileRole = async (userId: string, role: Profile['role']): Promise<Profile> => {
+    const { data, error } = await supabase.from('profiles').update({ role }).eq('id', userId).select().single();
     if (error) throw error;
     return data;
 };
 
-// Admin-only function to delete a user
 export const deleteUser = async (userId: string): Promise<void> => {
     const { error } = await supabase.rpc('delete_user_by_id', { user_id_to_delete: userId });
-    if (error) {
-        console.error("Error deleting user:", error);
-        throw error;
-    }
+    if (error) throw error;
 };
 
 // --- Gemini AI Functions ---
-
-// Initialize Gemini
-// Ensure process.env.API_KEY is available. For Vite, this is handled in vite.config.ts
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-
-/**
- * Uses Gemini to get an app recommendation based on a user query.
- * @param query The user's natural language query.
- * @param apps The list of available apps to recommend from.
- * @returns A string response from the AI.
- */
-export const getAiAppRecommendation = async (query: string, apps: App[]): Promise<string> => {
-    const appInfo = apps.map(app => 
-        `ID: ${app.id}, Jina: ${app.name}, Kategoria: ${app.category}, Maelezo: ${app.short_description}`
-    ).join('\n');
-
-    const prompt = `Wewe ni msaidizi mtaalam wa duka la programu la "App Duka". Lugha yako iwe Kiswahili.
-    Hii ni orodha ya programu zilizopo:\n${appInfo}\n\n
-    Mtumiaji anatafuta: "${query}"\n\n
-    Tafadhali, pendekeza programu moja au zaidi zinazolingana na ombi la mtumiaji. 
-    Toa maelezo mafupi na ya kirafiki kwa nini unapendekeza programu hizo.
-    Kama hakuna programu inayolingana, eleza kwa upole na upendekeze mtumiaji atafute kitu kingine.
-    Jibu lako liwe la moja kwa moja na fupi.`;
-
+export const getAiAppAnalysis = async (app: App): Promise<string> => {
     try {
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
-            contents: prompt,
-        });
+        const prompt = `You are an expert app store reviewer for a Swahili app store. Analyze the following app submission based on its metadata.
+Provide a concise summary for an administrator, highlighting potential strengths, weaknesses, and any red flags (e.g., vague description, suspicious category, mismatch between name and description).
+The response MUST be in Swahili.
+
+App Details:
+- Name: ${app.name}
+- Category: ${app.category}
+- Short Description: ${app.short_description}
+- Full Description: ${app.full_description}
+
+Your analysis:`;
+        
+        const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
         return response.text;
     } catch (error) {
-        console.error("Error calling Gemini API:", error);
-        throw new Error("Imeshindwa kupata pendekezo kutoka kwa AI.");
+        throw new Error("Imeshindwa kuchambua programu kwa kutumia AI.");
     }
 };
 
-/**
- * Provides a brief analysis of an app for admins to help with the approval process.
- */
-export const getAiAppAnalysis = async (app: App): Promise<string> => {
-    const appDetails = `Jina la Programu: ${app.name}\nKategoria: ${app.category}\nMaelezo Mafupi: ${app.short_description}\nMaelezo Kamili: ${app.full_description}`;
-    
-    const prompt = `Wewe ni mchambuzi msaidizi wa usalama na ubora wa programu.
-    Umepewa jukumu la kukagua programu mpya iliyowasilishwa kwenye duka la programu.
-    
-    Maelezo ya Programu:
-    ${appDetails}
-
-    Tafadhali toa uchambuzi mfupi katika lugha ya Kiswahili, ukizingatia yafuatayo:
-    1.  **Mapendekezo ya Jina na Maelezo:** Je, jina na maelezo ni mazuri na yanafaa? Toa mapendekezo ya kuboresha kama yapo.
-    2.  **Uwezekano wa Maudhui Hatari:** Kulingana na maelezo, je, kuna uwezekano wa programu kuwa na maudhui yasiyofaa, ulaghai (scam), au kukiuka sera? (k.m., ahadi za uongo, maudhui ya watu wazima).
-    3.  **Mapendekezo ya Mwisho:** Toa pendekezo fupi la mwisho: "Inaonekana salama kuidhinishwa," "Inahitaji ukaguzi wa kina," au "Inaashiria hatari, pendekeza kukataliwa."
-    
-    Jibu liwe fupi na lenye hoja wazi.`;
-
+export const getAiAppRecommendation = async (query: string, apps: App[]): Promise<string> => {
     try {
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
-            contents: prompt,
-        });
+        const appInfo = apps.map(app => `- Jina: ${app.name}, Maelezo: ${app.short_description} (Kategoria: ${app.category})`).join('\n');
+        const prompt = `You are a friendly AI assistant for a Swahili app store called "App Duka". Help users find the best app for their needs.
+The response MUST be in Swahili. Be conversational and helpful.
+
+Available apps:
+${appInfo}
+
+User's request: "${query}"
+
+Recommend suitable apps from the list. Explain why. If no app fits, politely say so.`;
+
+        const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
         return response.text;
     } catch (error) {
-        console.error("Error calling Gemini API for analysis:", error);
-        throw new Error("Imeshindwa kupata uchambuzi kutoka kwa AI.");
+        throw new Error("Imeshindwa kupata pendekezo la programu kutoka kwa AI.");
     }
 };
