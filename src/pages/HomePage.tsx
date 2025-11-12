@@ -1,3 +1,4 @@
+// Fix: Implemented the HomePage component.
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { getAllApps } from '../services/api';
@@ -38,7 +39,8 @@ const HomePage: React.FC = () => {
     const fetchApps = async () => {
       try {
         const appData = await getAllApps();
-        setApps(appData);
+        // Only show approved apps on the public homepage
+        setApps(appData.filter(app => app.status === 'approved'));
       } catch (err: any) {
         console.error("Failed to fetch apps:", err);
         setError("Imeshindwa kupakia programu. Tafadhali jaribu tena.");

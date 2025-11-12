@@ -6,8 +6,6 @@ interface AuthModalProps {
   onClose: () => void;
 }
 
-// NOTE: This file now exports the AuthModal component instead of a full page.
-// This modal is rendered globally from App.tsx.
 export const AuthModal: React.FC<AuthModalProps> = ({ onClose }) => {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
@@ -26,8 +24,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose }) => {
         : await signUpUser(email, password);
       if (authError) throw authError;
       
-      onClose(); // Close modal on success
-    } catch (err: any) {
+      onClose(); // Close modal on successful authentication
+    } catch (err: any)
+      {
       setError(err.message || `Imeshindwa ${isLogin ? 'kuingia' : 'kujisajili'}`);
     } finally {
       setLoading(false);
@@ -37,7 +36,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose }) => {
   return (
     <Modal title={isLogin ? 'Ingia' : 'Jisajili'} onClose={onClose}>
       <div className="w-full max-w-md mx-auto">
-        <p className="text-center text-text-secondary mb-6 -mt-2">Karibu App Duka</p>
+        <p className="text-center text-text-secondary mb-8 -mt-2">Karibu App Duka</p>
         
         <form onSubmit={handleSubmit}>
           {error && <p className="bg-red-100 text-red-700 p-3 rounded-md mb-4 text-sm">{error}</p>}
@@ -88,10 +87,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose }) => {
   );
 };
 
-// Default export is needed to avoid breaking existing imports that might expect it,
-// though it's not the primary export anymore.
-const AuthPage: React.FC = () => {
-    return <p>This page should not be visible. Please navigate to the home page.</p>;
-}
 
+// The page itself is no longer used, but we keep a default export to avoid potential import errors.
+const AuthPage: React.FC = () => null;
 export default AuthPage;

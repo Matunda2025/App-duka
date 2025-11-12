@@ -64,10 +64,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
+        // No need to set loading to true here, causes flicker.
+        // Let the main loading state handle the initial load.
         await fetchSessionAndProfile(session);
       } else {
         setProfile(null);
       }
+      // Only stop loading after the first auth state has been determined.
       if (loading) setLoading(false);
     });
 

@@ -38,6 +38,7 @@ const AdminRoutes: React.FC = () => {
     return <Navigate to="/" replace />;
   }
   
+  // Allow admins and developers to access the dashboard
   if (profile?.role !== 'admin' && profile?.role !== 'developer') {
     return <Navigate to="/" replace />;
   }
